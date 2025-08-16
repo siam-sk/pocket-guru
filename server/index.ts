@@ -3,6 +3,8 @@ import dotenv from "dotenv";
 import cors from "cors";
 import { connectDB, getDb } from "./db";
 import { ObjectId } from "mongodb";
+import authRoutes from "./routes/auth";
+import { authMiddleware, AuthRequest } from "./middleware/auth";
 
 dotenv.config();
 
@@ -12,14 +14,18 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+// Public routes
 app.get("/", (req: Request, res: Response) => {
   res.send("Express + TypeScript Server is running");
 });
+app.use("/api/auth", authRoutes);
 
+// Protected routes - all expense routes now require a valid token
 // POST /expenses → Add a new expense (title, amount, category, date)
-app.post("/expenses", async (req: Request, res: Response) => {
+app.post("/expenses", authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { title, amount, category, date } = req.body;
+    const userId = req.user?.userId;
 
     // title: required, string, min length 3
     if (!title || typeof title !== "string" || title.trim().length < 3) {
@@ -55,6 +61,7 @@ app.post("/expenses", async (req: Request, res: Response) => {
       amount: parsedAmount,
       category,
       date: expenseDate,
+      userId: new ObjectId(userId),
       createdAt: new Date(),
     });
 
@@ -66,11 +73,12 @@ app.post("/expenses", async (req: Request, res: Response) => {
   }
 });
 
-// GET /expenses → Fetch all expenses
-app.get("/expenses", async (req: Request, res: Response) => {
+// GET /expenses → Fetch all expenses for the logged-in user
+app.get("/expenses", authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
+    const userId = req.user?.userId;
     const { category, startDate, endDate } = req.query;
-    const query: Record<string, any> = {};
+    const query: Record<string, any> = { userId: new ObjectId(userId) };
 
     if (category && typeof category === "string" && category !== "All") {
       query.category = category;
@@ -101,9 +109,11 @@ app.get("/expenses", async (req: Request, res: Response) => {
 });
 
 // PATCH /expenses/:id → Update an expense
-app.patch("/expenses/:id", async (req: Request, res: Response) => {
+app.patch("/expenses/:id", authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
+    const userId = req.user?.userId;
+
     if (!ObjectId.isValid(id)) {
       return res.status(400).json({ error: "invalid id" });
     }
@@ -144,8 +154,14 @@ app.patch("/expenses/:id", async (req: Request, res: Response) => {
     update.updatedAt = new Date();
 
     const db = getDb();
+    // Ensure the expense belongs to the user before updating
+    const expense = await db.collection("expenses").findOne({ _id: new ObjectId(id), userId: new ObjectId(userId) });
+    if (!expense) {
+      return res.status(404).json({ error: "Expense not found or you do not have permission." });
+    }
+    
     const result = await db.collection("expenses").findOneAndUpdate(
-      { _id: new ObjectId(id) },
+      { _id: new ObjectId(id), userId: new ObjectId(userId) },
       { $set: update },
       { returnDocument: "after" }
     );
@@ -159,18 +175,17 @@ app.patch("/expenses/:id", async (req: Request, res: Response) => {
 });
 
 // DELETE /expenses/:id → Delete an expense
-app.delete("/expenses/:id", async (req: Request, res: Response) => {
+app.delete("/expenses/:id", authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.params;
-    if (!ObjectId.isValid(id)) {
-      return res.status(400).json({ error: "invalid id" });
-    }
+    const userId = req.user?.userId;
 
     const db = getDb();
-    const result = await db.collection("expenses").deleteOne({ _id: new ObjectId(id) });
+    // Ensure the expense belongs to the user before deleting
+    const result = await db.collection("expenses").deleteOne({ _id: new ObjectId(id), userId: new ObjectId(userId) });
 
     if (result.deletedCount === 0) {
-      return res.status(404).json({ error: "expense not found" });
+      return res.status(404).json({ error: "Expense not found or you do not have permission." });
     }
 
     return res.status(204).send();
@@ -179,6 +194,7 @@ app.delete("/expenses/:id", async (req: Request, res: Response) => {
     return res.status(500).json({ error: "internal server error" });
   }
 });
+
 
 connectDB()
   .then(() => {
