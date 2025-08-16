@@ -169,4 +169,6 @@ pocket-guru/
 Security notes
 - Never commit `.env` with real secrets.
 - Rotate `JWT_SECRET` and MongoDB credentials regularly in real deployments.
-- Validate all inputs (see Zod usage in
+- VValidate all inputs (see Zod usage in [server/routes/auth.ts](server/routes/auth.ts)).
+
+Happy hacking!
