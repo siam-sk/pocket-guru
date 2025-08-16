@@ -1,11 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
-import logo from "../assets/logo.png";
+import { useState, useEffect, useCallback, useRef } from "react";
 import AddExpenseForm from "../components/AddExpenseForm";
+import type { ExpenseFormData } from "../components/AddExpenseForm";
 import ExpenseList from "../components/ExpenseList";
 import type { Expense } from "../components/ExpenseList";
 import ExpenseChart from "../components/ExpenseChart";
 import api from "../lib/api";
-import { useAuth } from "../context/AuthContext";
+import Skeleton from "../components/Skeleton";
 
 const CATEGORIES = ["All", "Food", "Transport", "Shopping", "Others"];
 
@@ -13,11 +13,10 @@ export default function Dashboard() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isFormVisible, setIsFormVisible] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
   const [categoryFilter, setCategoryFilter] = useState("All");
   const [dateRange, setDateRange] = useState({ start: "", end: "" });
-  const { logout } = useAuth();
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
   const fetchExpenses = useCallback(async () => {
     setLoading(true);
@@ -40,28 +39,36 @@ export default function Dashboard() {
     fetchExpenses();
   }, [fetchExpenses]);
 
-  const handleFormSuccess = () => {
-    fetchExpenses();
-    setIsFormVisible(false);
+  const handleOpenModal = (expense?: Expense) => {
+    setEditingExpense(expense || null);
+    dialogRef.current?.showModal();
+  };
+
+  const handleCloseModal = () => {
+    dialogRef.current?.close();
     setEditingExpense(null);
   };
 
-  const handleCancelForm = () => {
-    setIsFormVisible(false);
-    setEditingExpense(null);
-  };
-
-  const handleAddClick = () => {
-    setEditingExpense(null);
-    setIsFormVisible(true);
-  };
-
-  const handleEdit = (expense: Expense) => {
-    setEditingExpense(expense);
-    setIsFormVisible(true);
+  const handleFormSubmit = async (data: ExpenseFormData) => {
+    try {
+      if (editingExpense) {
+        // This is an update
+        await api.patch(`/expenses/${editingExpense._id}`, data);
+      } else {
+        // This is a new expense
+        await api.post("/expenses", data);
+      }
+      fetchExpenses();
+      handleCloseModal();
+      
+    } catch (err) {
+      
+      console.error(err);
+    }
   };
 
   const handleDelete = async (id: string) => {
+    
     if (window.confirm("Are you sure?")) {
       try {
         await api.delete(`/expenses/${id}`);
@@ -72,56 +79,73 @@ export default function Dashboard() {
     }
   };
 
+  const clearFilters = () => {
+    setCategoryFilter("All");
+    setDateRange({ start: "", end: "" });
+  };
+
+  // Check if there are no expenses and not loading
+  const isEmpty = !loading && !error && expenses.length === 0;
+
   return (
-    <div className="bg-black min-h-screen font-sans text-gray-300 flex flex-col">
-      <header className="bg-[#171717] border-b border-gray-800 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src={logo} alt="Pocket Guru Logo" className="h-10 w-10" />
-            <div>
-              <div className="text-xl font-bold text-white">Pocket Guru</div>
-              <div className="text-xs text-gray-400 -mt-0.5">Expense Tracker</div>
-            </div>
-          </div>
-          <div>
-            <button onClick={isFormVisible ? handleCancelForm : handleAddClick} className="bg-white text-black px-3 py-2 rounded-md font-semibold hover:bg-gray-200 mr-4">
-              {isFormVisible ? "Cancel" : "Add Expense"}
-            </button>
-            <button onClick={logout} className="bg-rose-600 text-white px-3 py-2 rounded-md font-semibold hover:bg-rose-700">
-              Logout
-            </button>
-          </div>
-        </div>
-      </header>
+    <>
+      <div className="flex justify-end mb-4">
+        <button onClick={() => handleOpenModal()} className="bg-white text-black px-3 py-2 rounded-md font-semibold hover:bg-gray-200">
+          Add Expense
+        </button>
+      </div>
 
-      <main className="container max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 flex-grow">
-        {isFormVisible && <AddExpenseForm onSuccess={handleFormSuccess} onCancel={handleCancelForm} expenseToEdit={editingExpense} />}
-        <ExpenseChart expenses={expenses} />
-        {/* Filter Controls */}
-        <div className="my-6 p-4 bg-[#0f0f0f] border border-gray-800 rounded-lg flex flex-col sm:flex-row gap-4 items-center">
-            <div className="flex-1 w-full">
-                <label className="block text-xs text-gray-400 mb-1">Category</label>
-                <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="w-full bg-[#171717] border border-gray-800 text-gray-100 rounded px-3 py-2">
-                    {CATEGORIES.map(c => <option key={c}>{c}</option>)}
-                </select>
-            </div>
-            <div className="flex-1 w-full">
-                <label className="block text-xs text-gray-400 mb-1">Start Date</label>
-                <input type="date" value={dateRange.start} onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))} className="w-full bg-[#171717] border border-gray-800 text-gray-100 rounded px-3 py-2" />
-            </div>
-            <div className="flex-1 w-full">
-                <label className="block text-xs text-gray-400 mb-1">End Date</label>
-                <input type="date" value={dateRange.end} onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))} className="w-full bg-[#171717] border border-gray-800 text-gray-100 rounded px-3 py-2" />
-            </div>
-        </div>
-        <ExpenseList expenses={expenses} loading={loading} error={error} onEdit={handleEdit} onDelete={handleDelete} />
-      </main>
+      {/* Modal Dialog */}
+      <dialog ref={dialogRef} className="m-auto bg-transparent p-0 border-none backdrop:bg-black/60">
+        <AddExpenseForm
+          onSubmit={handleFormSubmit}
+          onCancel={handleCloseModal}
+          expenseToEdit={editingExpense}
+        />
+      </dialog>
 
-      <footer className="bg-[#171717] border-t border-gray-800">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-4 text-center">
-          <p className="text-sm text-gray-500">&copy; 2025 Pocket Guru. All rights reserved.</p>
+      {loading ? (
+        <>
+          <Skeleton className="h-6 w-64 mb-3" />
+          <Skeleton className="h-[340px] w-full mb-6" />
+          <Skeleton className="h-24 w-full" />
+        </>
+      ) : isEmpty ? (
+        <div className="text-center my-16">
+          <h2 className="text-2xl font-bold text-white mb-2">Welcome to Pocket Guru!</h2>
+          <p className="text-gray-400 mb-6">Track your first expense to see your dashboard come to life.</p>
+          <button onClick={() => handleOpenModal()} className="bg-white text-black px-4 py-2 rounded-md font-semibold hover:bg-gray-200">
+            Add Your First Expense
+          </button>
         </div>
-      </footer>
-    </div>
+      ) : (
+        <>
+          <ExpenseChart expenses={expenses} />
+          {/* Filter Controls */}
+          <div className="my-6 p-4 bg-[#0f0f0f] border border-gray-800 rounded-lg flex flex-col sm:flex-row gap-4 items-end">
+              <div className="flex-1 w-full">
+                  <label className="block text-xs text-gray-400 mb-1">Category</label>
+                  <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="w-full bg-[#171717] border border-gray-800 text-gray-100 rounded px-3 py-2">
+                      {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+                  </select>
+              </div>
+              <div className="flex-1 w-full">
+                  <label className="block text-xs text-gray-400 mb-1">Start Date</label>
+                  <input type="date" value={dateRange.start} onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))} className="w-full bg-[#171717] border border-gray-800 text-gray-100 rounded px-3 py-2" />
+              </div>
+              <div className="flex-1 w-full">
+                  <label className="block text-xs text-gray-400 mb-1">End Date</label>
+                  <input type="date" value={dateRange.end} onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))} className="w-full bg-[#171717] border border-gray-800 text-gray-100 rounded px-3 py-2" />
+              </div>
+              <div className="flex-1 w-full">
+                <button onClick={clearFilters} className="w-full bg-gray-700 text-gray-200 font-semibold py-2 px-3 rounded-md hover:bg-gray-600">
+                  Clear
+                </button>
+              </div>
+          </div>
+          <ExpenseList expenses={expenses} loading={loading} error={error} onEdit={handleOpenModal} onDelete={handleDelete} />
+        </>
+      )}
+    </>
   );
 }

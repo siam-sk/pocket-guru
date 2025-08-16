@@ -1,3 +1,4 @@
+import { Pencil, Trash2 } from 'lucide-react';
 import { CATEGORY_COLORS } from "../lib/constants";
 
 export type Expense = {
@@ -54,7 +55,7 @@ export default function ExpenseList({ expenses, loading, error, onDelete, onEdit
         <>
           <div className="hidden sm:block overflow-x-auto rounded-lg border border-gray-800">
             <table className="min-w-full bg-[#0f0f0f]">
-              <thead className="bg-[#121212] text-gray-400 text-left text-sm">
+              <thead className="bg-[#121212] text-gray-400 text-left text-sm sticky top-0 z-[1]">
                 <tr>
                   <th className="px-4 py-3 font-medium">Title</th>
                   <th className="px-4 py-3 font-medium">Category</th>
@@ -65,13 +66,12 @@ export default function ExpenseList({ expenses, loading, error, onDelete, onEdit
               </thead>
               <tbody>
                 {expenses.map((e) => (
-                  <tr key={e._id} className="border-t border-gray-800">
+                  <tr key={e._id} className="border-t border-gray-800 odd:bg-black/20 hover:bg-white/5 transition-colors">
                     <td className="px-4 py-3 text-gray-200">{e.title}</td>
                     <td className="px-4 py-3">
-                      <span
-                        className={`text-xs px-2 py-1 rounded-full border ${badgeBgClass(e.category)}`}
-                        style={{ color: CATEGORY_COLORS[e.category] }}
-                      >
+                      <span className={`text-xs px-2 py-1 rounded-full border ${badgeBgClass(e.category)} inline-flex items-center`}
+                        style={{ color: CATEGORY_COLORS[e.category] }}>
+                        <span className="h-2.5 w-2.5 rounded-full mr-1 inline-block" style={{ backgroundColor: CATEGORY_COLORS[e.category] }} />
                         {e.category}
                       </span>
                     </td>
@@ -82,8 +82,12 @@ export default function ExpenseList({ expenses, loading, error, onDelete, onEdit
                       {currency(Number(e.amount))}
                     </td>
                     <td className="px-4 py-3 text-center">
-                      <button onClick={() => onEdit(e)} className="text-sm text-sky-400 hover:text-sky-300 mr-3">Edit</button>
-                      <button onClick={() => onDelete(e._id)} className="text-sm text-rose-500 hover:text-rose-400">Delete</button>
+                      <button onClick={() => onEdit(e)} className="p-2 text-sky-400 hover:text-sky-300">
+                        <Pencil size={16} />
+                      </button>
+                      <button onClick={() => onDelete(e._id)} className="p-2 text-rose-500 hover:text-rose-400">
+                        <Trash2 size={16} />
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -102,10 +106,9 @@ export default function ExpenseList({ expenses, loading, error, onDelete, onEdit
                       {new Date(e.date).toLocaleDateString()}
                     </div>
                   </div>
-                  <div
-                    className={`text-xs px-2 py-1 rounded-full border ${badgeBgClass(e.category)}`}
-                    style={{ color: CATEGORY_COLORS[e.category] }}
-                  >
+                  <div className={`text-xs px-2 py-1 rounded-full border ${badgeBgClass(e.category)} inline-flex items-center`}
+                       style={{ color: CATEGORY_COLORS[e.category] }}>
+                    <span className="h-2.5 w-2.5 rounded-full mr-1 inline-block" style={{ backgroundColor: CATEGORY_COLORS[e.category] }} />
                     {e.category}
                   </div>
                 </div>

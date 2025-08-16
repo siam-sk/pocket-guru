@@ -28,7 +28,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center">
+    <div className="w-full flex-grow flex items-center justify-center">
       <form onSubmit={handleSubmit} className="w-full max-w-sm bg-[#0f0f0f] border border-gray-800 rounded-lg p-8">
         <h2 className="text-2xl font-bold text-white mb-6 text-center">Register</h2>
         {error && <p className="text-red-500 text-sm mb-4">{error}</p>}

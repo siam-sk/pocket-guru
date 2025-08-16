@@ -1,21 +1,20 @@
 import React, { useState, useEffect } from "react";
-import axios from "axios";
 import type { Expense } from "./ExpenseList";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+export type ExpenseFormData = Omit<Expense, "_id" | "createdAt" | "userId">;
 
 type Props = {
-  onSuccess?: () => void;
-  onCancel?: () => void;
+  onSubmit: (data: ExpenseFormData) => void;
+  onCancel: () => void;
   expenseToEdit?: Expense | null;
 };
 
-export default function AddExpenseForm({ onSuccess, onCancel, expenseToEdit }: Props) {
+export default function AddExpenseForm({ onSubmit, onCancel, expenseToEdit }: Props) {
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState<string>("");
   const [category, setCategory] = useState("Food");
   const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10));
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const isEditMode = !!expenseToEdit;
@@ -29,6 +28,22 @@ export default function AddExpenseForm({ onSuccess, onCancel, expenseToEdit }: P
     }
   }, [expenseToEdit, isEditMode]);
 
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const validationError = validate();
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+
+    onSubmit({
+      title: title.trim(),
+      amount: Number(amount),
+      category,
+      date,
+    });
+  };
+  
   const validate = () => {
     if (!title || title.trim().length < 3) return "Title must be at least 3 characters.";
     const parsed = Number(amount);
@@ -37,42 +52,8 @@ export default function AddExpenseForm({ onSuccess, onCancel, expenseToEdit }: P
     return null;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-    const v = validate();
-    if (v) return setError(v);
-
-    setLoading(true);
-    const expenseData = {
-      title: title.trim(),
-      amount: Number(amount),
-      category,
-      date,
-    };
-
-    try {
-      if (isEditMode) {
-        await axios.patch(`${API_URL}/expenses/${expenseToEdit._id}`, expenseData);
-      } else {
-        await axios.post(`${API_URL}/expenses`, expenseData);
-      }
-      
-      setTitle("");
-      setAmount("");
-      setCategory("Food");
-      setDate(new Date().toISOString().slice(0, 10));
-      onSuccess?.();
-    } catch (err) {
-      console.error(err);
-      setError("Failed to save expense. Check server connection.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
   return (
-    <form id="add-expense" onSubmit={handleSubmit} className="w-full max-w-2xl bg-[#0f0f0f] border border-gray-800 rounded-lg p-4 mb-8">
+    <form onSubmit={handleSubmit} className="w-full max-w-md bg-[#0f0f0f] border border-gray-800 rounded-lg p-6">
       <h3 className="text-lg font-semibold text-white mb-4">
         {isEditMode ? "Edit Expense" : "Add New Expense"}
       </h3>
@@ -130,15 +111,14 @@ export default function AddExpenseForm({ onSuccess, onCancel, expenseToEdit }: P
       <div className="mt-4 flex items-center gap-3">
         <button
           type="submit"
-          disabled={loading}
-          className="bg-white text-black font-semibold px-4 py-2 rounded-md hover:bg-gray-200 disabled:opacity-60"
+          className="bg-white text-black font-semibold px-4 py-2 rounded-md hover:bg-gray-200"
         >
-          {loading ? "Saving..." : isEditMode ? "Update Expense" : "Save Expense"}
+          {isEditMode ? "Update Expense" : "Save Expense"}
         </button>
 
         <button
           type="button"
-          onClick={() => onCancel?.()}
+          onClick={onCancel}
           className="bg-transparent border border-gray-700 text-gray-300 px-3 py-2 rounded-md hover:bg-gray-800"
         >
           Cancel
