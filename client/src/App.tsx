@@ -4,6 +4,7 @@ import logo from "./assets/logo.png";
 import AddExpenseForm from "./components/AddExpenseForm";
 import ExpenseList from "./components/ExpenseList";
 import type { Expense } from "./components/ExpenseList";
+import ExpenseChart from "./components/ExpenseChart";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 const CATEGORIES = ["All", "Food", "Transport", "Shopping", "Others"];
@@ -110,6 +111,9 @@ function App() {
             expenseToEdit={editingExpense}
           />
         )}
+
+        {/* Expense Chart */}
+        <ExpenseChart expenses={expenses} />
 
         {/* Filter Controls */}
         <div className="my-6 p-4 bg-[#0f0f0f] border border-gray-800 rounded-lg flex flex-col sm:flex-row gap-4 items-center">

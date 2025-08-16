@@ -1,3 +1,5 @@
+import { CATEGORY_COLORS } from "../lib/constants";
+
 export type Expense = {
   _id: string;
   title: string;
@@ -17,12 +19,12 @@ type Props = {
 const currency = (n: number) =>
   n.toLocaleString(undefined, { style: "currency", currency: "USD" });
 
-const badgeClasses = (category: string) => {
+const badgeBgClass = (category: string) => {
   const c = category.toLowerCase();
-  if (c === "food") return "bg-emerald-600/20 text-emerald-300 border border-emerald-600/40";
-  if (c === "transport") return "bg-sky-600/20 text-sky-300 border border-sky-600/40";
-  if (c === "shopping") return "bg-fuchsia-600/20 text-fuchsia-300 border border-fuchsia-600/40";
-  return "bg-gray-700/40 text-gray-300 border border-gray-600/50";
+  if (c === "food") return "bg-emerald-600/20 border-emerald-600/40";
+  if (c === "transport") return "bg-sky-600/20 border-sky-600/40";
+  if (c === "shopping") return "bg-yellow-600/20 border-yellow-600/40";
+  return "bg-gray-700/40 border-gray-600/50";
 };
 
 export default function ExpenseList({ expenses, loading, error, onDelete, onEdit }: Props) {
@@ -66,7 +68,10 @@ export default function ExpenseList({ expenses, loading, error, onDelete, onEdit
                   <tr key={e._id} className="border-t border-gray-800">
                     <td className="px-4 py-3 text-gray-200">{e.title}</td>
                     <td className="px-4 py-3">
-                      <span className={`text-xs px-2 py-1 rounded-full ${badgeClasses(e.category)}`}>
+                      <span
+                        className={`text-xs px-2 py-1 rounded-full border ${badgeBgClass(e.category)}`}
+                        style={{ color: CATEGORY_COLORS[e.category] }}
+                      >
                         {e.category}
                       </span>
                     </td>
@@ -97,7 +102,10 @@ export default function ExpenseList({ expenses, loading, error, onDelete, onEdit
                       {new Date(e.date).toLocaleDateString()}
                     </div>
                   </div>
-                  <div className={`text-xs px-2 py-1 rounded-full ${badgeClasses(e.category)}`}>
+                  <div
+                    className={`text-xs px-2 py-1 rounded-full border ${badgeBgClass(e.category)}`}
+                    style={{ color: CATEGORY_COLORS[e.category] }}
+                  >
                     {e.category}
                   </div>
                 </div>
