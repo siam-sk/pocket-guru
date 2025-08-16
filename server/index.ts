@@ -20,7 +20,6 @@ app.get("/", (req: Request, res: Response) => {
 });
 app.use("/api/auth", authRoutes);
 
-// Protected routes - all expense routes now require a valid token
 // POST /expenses → Add a new expense (title, amount, category, date)
 app.post("/expenses", authMiddleware, async (req: AuthRequest, res: Response) => {
   try {
