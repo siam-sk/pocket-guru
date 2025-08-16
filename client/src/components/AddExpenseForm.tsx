@@ -1,20 +1,33 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
+import type { Expense } from "./ExpenseList";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 type Props = {
   onSuccess?: () => void;
   onCancel?: () => void;
+  expenseToEdit?: Expense | null;
 };
 
-export default function AddExpenseForm({ onSuccess, onCancel }: Props) {
+export default function AddExpenseForm({ onSuccess, onCancel, expenseToEdit }: Props) {
   const [title, setTitle] = useState("");
   const [amount, setAmount] = useState<string>("");
   const [category, setCategory] = useState("Food");
   const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10));
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const isEditMode = !!expenseToEdit;
+
+  useEffect(() => {
+    if (isEditMode) {
+      setTitle(expenseToEdit.title);
+      setAmount(String(expenseToEdit.amount));
+      setCategory(expenseToEdit.category);
+      setDate(new Date(expenseToEdit.date).toISOString().slice(0, 10));
+    }
+  }, [expenseToEdit, isEditMode]);
 
   const validate = () => {
     if (!title || title.trim().length < 3) return "Title must be at least 3 characters.";
@@ -31,13 +44,20 @@ export default function AddExpenseForm({ onSuccess, onCancel }: Props) {
     if (v) return setError(v);
 
     setLoading(true);
+    const expenseData = {
+      title: title.trim(),
+      amount: Number(amount),
+      category,
+      date,
+    };
+
     try {
-      await axios.post(`${API_URL}/expenses`, {
-        title: title.trim(),
-        amount: Number(amount),
-        category,
-        date,
-      });
+      if (isEditMode) {
+        await axios.patch(`${API_URL}/expenses/${expenseToEdit._id}`, expenseData);
+      } else {
+        await axios.post(`${API_URL}/expenses`, expenseData);
+      }
+      
       setTitle("");
       setAmount("");
       setCategory("Food");
@@ -52,7 +72,10 @@ export default function AddExpenseForm({ onSuccess, onCancel }: Props) {
   };
 
   return (
-    <form id="add-expense" onSubmit={handleSubmit} className="w-full max-w-2xl bg-[#0f0f0f] border border-gray-800 rounded-lg p-4">
+    <form id="add-expense" onSubmit={handleSubmit} className="w-full max-w-2xl bg-[#0f0f0f] border border-gray-800 rounded-lg p-4 mb-8">
+      <h3 className="text-lg font-semibold text-white mb-4">
+        {isEditMode ? "Edit Expense" : "Add New Expense"}
+      </h3>
       {error && <div className="mb-3 text-sm text-red-400">{error}</div>}
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -110,7 +133,7 @@ export default function AddExpenseForm({ onSuccess, onCancel }: Props) {
           disabled={loading}
           className="bg-white text-black font-semibold px-4 py-2 rounded-md hover:bg-gray-200 disabled:opacity-60"
         >
-          {loading ? "Saving..." : "Save Expense"}
+          {loading ? "Saving..." : isEditMode ? "Update Expense" : "Save Expense"}
         </button>
 
         <button

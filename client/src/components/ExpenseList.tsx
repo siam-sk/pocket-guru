@@ -1,16 +1,17 @@
-
 export type Expense = {
   _id: string;
   title: string;
   amount: number;
   category: "Food" | "Transport" | "Shopping" | "Others" | string;
-  date: string; 
+  date: string;
 };
 
 type Props = {
   expenses: Expense[];
   loading?: boolean;
   error?: string | null;
+  onDelete: (id: string) => void;
+  onEdit: (expense: Expense) => void;
 };
 
 const currency = (n: number) =>
@@ -24,7 +25,7 @@ const badgeClasses = (category: string) => {
   return "bg-gray-700/40 text-gray-300 border border-gray-600/50";
 };
 
-export default function ExpenseList({ expenses, loading, error }: Props) {
+export default function ExpenseList({ expenses, loading, error, onDelete, onEdit }: Props) {
   const total = expenses.reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
 
   return (
@@ -57,6 +58,7 @@ export default function ExpenseList({ expenses, loading, error }: Props) {
                   <th className="px-4 py-3 font-medium">Category</th>
                   <th className="px-4 py-3 font-medium">Date</th>
                   <th className="px-4 py-3 font-medium text-right">Amount</th>
+                  <th className="px-4 py-3 font-medium text-center">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -73,6 +75,10 @@ export default function ExpenseList({ expenses, loading, error }: Props) {
                     </td>
                     <td className="px-4 py-3 text-right text-gray-200">
                       {currency(Number(e.amount))}
+                    </td>
+                    <td className="px-4 py-3 text-center">
+                      <button onClick={() => onEdit(e)} className="text-sm text-sky-400 hover:text-sky-300 mr-3">Edit</button>
+                      <button onClick={() => onDelete(e._id)} className="text-sm text-rose-500 hover:text-rose-400">Delete</button>
                     </td>
                   </tr>
                 ))}
@@ -95,8 +101,14 @@ export default function ExpenseList({ expenses, loading, error }: Props) {
                     {e.category}
                   </div>
                 </div>
-                <div className="mt-3 text-right text-gray-100 font-semibold">
-                  {currency(Number(e.amount))}
+                <div className="mt-3 flex justify-between items-center">
+                  <div className="text-gray-100 font-semibold">
+                    {currency(Number(e.amount))}
+                  </div>
+                  <div>
+                    <button onClick={() => onEdit(e)} className="text-sm text-sky-400 hover:text-sky-300 mr-3">Edit</button>
+                    <button onClick={() => onDelete(e._id)} className="text-sm text-rose-500 hover:text-rose-400">Delete</button>
+                  </div>
                 </div>
               </div>
             ))}

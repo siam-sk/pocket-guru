@@ -12,6 +12,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isFormVisible, setIsFormVisible] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 
   const fetchExpenses = async () => {
     setLoading(true);
@@ -34,10 +35,38 @@ function App() {
   const handleFormSuccess = () => {
     fetchExpenses();
     setIsFormVisible(false);
+    setEditingExpense(null);
+  };
+
+  const handleCancelForm = () => {
+    setIsFormVisible(false);
+    setEditingExpense(null);
+  };
+
+  const handleAddClick = () => {
+    setEditingExpense(null);
+    setIsFormVisible(true);
+  };
+
+  const handleEdit = (expense: Expense) => {
+    setEditingExpense(expense);
+    setIsFormVisible(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm("Are you sure you want to delete this expense?")) {
+      try {
+        await axios.delete(`${API_URL}/expenses/${id}`);
+        fetchExpenses();
+      } catch (err) {
+        console.error(err);
+        setError("Failed to delete expense.");
+      }
+    }
   };
 
   return (
-    <div className="bg-black min-h-screen font-sans text-gray-300">
+    <div className="bg-black min-h-screen font-sans text-gray-300 flex flex-col">
       <header className="bg-[#171717] border-b border-gray-800 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -48,19 +77,29 @@ function App() {
             </div>
           </div>
           <button
-            onClick={() => setIsFormVisible(!isFormVisible)}
+            onClick={isFormVisible ? handleCancelForm : handleAddClick}
             className="bg-white text-black px-3 py-2 rounded-md font-semibold hover:bg-gray-200"
           >
-            {isFormVisible ? "Close Form" : "Add Expense"}
+            {isFormVisible ? "Cancel" : "Add Expense"}
           </button>
         </div>
       </header>
 
-      <main className="container max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+      <main className="container max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 flex-grow">
         {isFormVisible && (
-          <AddExpenseForm onSuccess={handleFormSuccess} onCancel={() => setIsFormVisible(false)} />
+          <AddExpenseForm
+            onSuccess={handleFormSuccess}
+            onCancel={handleCancelForm}
+            expenseToEdit={editingExpense}
+          />
         )}
-        <ExpenseList expenses={expenses} loading={loading} error={error} />
+        <ExpenseList
+          expenses={expenses}
+          loading={loading}
+          error={error}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
       </main>
 
       <footer className="bg-[#171717] border-t border-gray-800">
