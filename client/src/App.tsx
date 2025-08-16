@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import logo from "./assets/logo.png";
 import AddExpenseForm from "./components/AddExpenseForm";
@@ -6,6 +6,7 @@ import ExpenseList from "./components/ExpenseList";
 import type { Expense } from "./components/ExpenseList";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+const CATEGORIES = ["All", "Food", "Transport", "Shopping", "Others"];
 
 function App() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
@@ -14,11 +15,26 @@ function App() {
   const [isFormVisible, setIsFormVisible] = useState(false);
   const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
 
-  const fetchExpenses = async () => {
+  // Filter states
+  const [categoryFilter, setCategoryFilter] = useState("All");
+  const [dateRange, setDateRange] = useState({ start: "", end: "" });
+
+  const fetchExpenses = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const response = await axios.get(`${API_URL}/expenses`);
+      const params = new URLSearchParams();
+      if (categoryFilter !== "All") {
+        params.append("category", categoryFilter);
+      }
+      if (dateRange.start) {
+        params.append("startDate", dateRange.start);
+      }
+      if (dateRange.end) {
+        params.append("endDate", dateRange.end);
+      }
+
+      const response = await axios.get(`${API_URL}/expenses`, { params });
       setExpenses(response.data);
     } catch (err) {
       console.error(err);
@@ -26,11 +42,12 @@ function App() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [categoryFilter, dateRange]);
 
+  // Re-fetch when filters change
   useEffect(() => {
     fetchExpenses();
-  }, []);
+  }, [fetchExpenses]);
 
   const handleFormSuccess = () => {
     fetchExpenses();
@@ -93,6 +110,39 @@ function App() {
             expenseToEdit={editingExpense}
           />
         )}
+
+        {/* Filter Controls */}
+        <div className="my-6 p-4 bg-[#0f0f0f] border border-gray-800 rounded-lg flex flex-col sm:flex-row gap-4 items-center">
+          <div className="flex-1 w-full">
+            <label className="block text-xs text-gray-400 mb-1">Category</label>
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="w-full bg-[#171717] border border-gray-800 text-gray-100 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-white"
+            >
+              {CATEGORIES.map(c => <option key={c}>{c}</option>)}
+            </select>
+          </div>
+          <div className="flex-1 w-full">
+            <label className="block text-xs text-gray-400 mb-1">Start Date</label>
+            <input
+              type="date"
+              value={dateRange.start}
+              onChange={(e) => setDateRange(prev => ({ ...prev, start: e.target.value }))}
+              className="w-full bg-[#171717] border border-gray-800 text-gray-100 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-white"
+            />
+          </div>
+          <div className="flex-1 w-full">
+            <label className="block text-xs text-gray-400 mb-1">End Date</label>
+            <input
+              type="date"
+              value={dateRange.end}
+              onChange={(e) => setDateRange(prev => ({ ...prev, end: e.target.value }))}
+              className="w-full bg-[#171717] border border-gray-800 text-gray-100 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-white"
+            />
+          </div>
+        </div>
+
         <ExpenseList
           expenses={expenses}
           loading={loading}
