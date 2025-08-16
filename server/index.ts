@@ -21,27 +21,37 @@ app.post("/expenses", async (req: Request, res: Response) => {
   try {
     const { title, amount, category, date } = req.body;
 
-    if (!title || typeof title !== "string") {
-      return res.status(400).json({ error: "title is required and must be a string" });
+    // title: required, string, min length 3
+    if (!title || typeof title !== "string" || title.trim().length < 3) {
+      return res.status(400).json({ error: "title is required, must be a string and at least 3 characters" });
     }
 
+    // amount: required, number > 0
+    if (amount === undefined || amount === null) {
+      return res.status(400).json({ error: "amount is required and must be a number greater than 0" });
+    }
     const parsedAmount = Number(amount);
-    if (Number.isNaN(parsedAmount)) {
-      return res.status(400).json({ error: "amount is required and must be a number" });
+    if (Number.isNaN(parsedAmount) || parsedAmount <= 0) {
+      return res.status(400).json({ error: "amount must be a number greater than 0" });
     }
 
+    // category: required string
     if (!category || typeof category !== "string") {
       return res.status(400).json({ error: "category is required and must be a string" });
     }
 
-    const expenseDate = date ? new Date(date) : new Date();
+    // date: required, valid date
+    if (!date) {
+      return res.status(400).json({ error: "date is required and must be a valid date string" });
+    }
+    const expenseDate = new Date(date);
     if (Number.isNaN(expenseDate.getTime())) {
       return res.status(400).json({ error: "date must be a valid date string" });
     }
 
     const db = getDb();
     const resInsert = await db.collection("expenses").insertOne({
-      title,
+      title: title.trim(),
       amount: parsedAmount,
       category,
       date: expenseDate,
@@ -84,13 +94,17 @@ app.patch("/expenses/:id", async (req: Request, res: Response) => {
     const update: Record<string, unknown> = {};
 
     if (title !== undefined) {
-      if (typeof title !== "string") return res.status(400).json({ error: "title must be a string" });
-      update.title = title;
+      if (typeof title !== "string" || title.trim().length < 3) {
+        return res.status(400).json({ error: "title must be a string and at least 3 characters" });
+      }
+      update.title = title.trim();
     }
 
     if (amount !== undefined) {
       const parsed = Number(amount);
-      if (Number.isNaN(parsed)) return res.status(400).json({ error: "amount must be a number" });
+      if (Number.isNaN(parsed) || parsed <= 0) {
+        return res.status(400).json({ error: "amount must be a number greater than 0" });
+      }
       update.amount = parsed;
     }
 
@@ -120,6 +134,28 @@ app.patch("/expenses/:id", async (req: Request, res: Response) => {
 
     if (!result || !result.value) return res.status(404).json({ error: "expense not found" });
     return res.status(200).json(result.value);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "internal server error" });
+  }
+});
+
+// DELETE /expenses/:id → Delete an expense
+app.delete("/expenses/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ error: "invalid id" });
+    }
+
+    const db = getDb();
+    const result = await db.collection("expenses").deleteOne({ _id: new ObjectId(id) });
+
+    if (result.deletedCount === 0) {
+      return res.status(404).json({ error: "expense not found" });
+    }
+
+    return res.status(204).send();
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: "internal server error" });
