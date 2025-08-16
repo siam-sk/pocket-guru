@@ -2,6 +2,7 @@ import express, { Express, Request, Response } from "express";
 import dotenv from "dotenv";
 import cors from "cors";
 import { connectDB, getDb } from "./db";
+import { ObjectId } from "mongodb";
 
 dotenv.config();
 
@@ -68,6 +69,60 @@ app.get("/expenses", async (req: Request, res: Response) => {
   } catch (err) {
     console.error(err);
     return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// PATCH /expenses/:id → Update an expense
+app.patch("/expenses/:id", async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    if (!ObjectId.isValid(id)) {
+      return res.status(400).json({ error: "invalid id" });
+    }
+
+    const { title, amount, category, date } = req.body;
+    const update: Record<string, unknown> = {};
+
+    if (title !== undefined) {
+      if (typeof title !== "string") return res.status(400).json({ error: "title must be a string" });
+      update.title = title;
+    }
+
+    if (amount !== undefined) {
+      const parsed = Number(amount);
+      if (Number.isNaN(parsed)) return res.status(400).json({ error: "amount must be a number" });
+      update.amount = parsed;
+    }
+
+    if (category !== undefined) {
+      if (typeof category !== "string") return res.status(400).json({ error: "category must be a string" });
+      update.category = category;
+    }
+
+    if (date !== undefined) {
+      const parsedDate = new Date(date);
+      if (Number.isNaN(parsedDate.getTime())) return res.status(400).json({ error: "date must be a valid date" });
+      update.date = parsedDate;
+    }
+
+    if (Object.keys(update).length === 0) {
+      return res.status(400).json({ error: "no valid fields to update" });
+    }
+
+    update.updatedAt = new Date();
+
+    const db = getDb();
+    const result = await db.collection("expenses").findOneAndUpdate(
+      { _id: new ObjectId(id) },
+      { $set: update },
+      { returnDocument: "after" }
+    );
+
+    if (!result || !result.value) return res.status(404).json({ error: "expense not found" });
+    return res.status(200).json(result.value);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "internal server error" });
   }
 });
 
