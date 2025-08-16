@@ -55,6 +55,22 @@ app.post("/expenses", async (req: Request, res: Response) => {
   }
 });
 
+// GET /expenses → Fetch all expenses
+app.get("/expenses", async (req: Request, res: Response) => {
+  try {
+    const db = getDb();
+    const expenses = await db
+      .collection("expenses")
+      .find()
+      .sort({ date: -1, createdAt: -1 })
+      .toArray();
+    return res.status(200).json(expenses);
+  } catch (err) {
+    console.error(err);
+    return res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 connectDB()
   .then(() => {
     app.listen(port, () => {
