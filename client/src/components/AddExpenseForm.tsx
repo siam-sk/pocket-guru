@@ -1,0 +1,126 @@
+import React, { useState } from "react";
+import axios from "axios";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
+
+type Props = {
+  onSuccess?: () => void;
+  onCancel?: () => void;
+};
+
+export default function AddExpenseForm({ onSuccess, onCancel }: Props) {
+  const [title, setTitle] = useState("");
+  const [amount, setAmount] = useState<string>("");
+  const [category, setCategory] = useState("Food");
+  const [date, setDate] = useState<string>(new Date().toISOString().slice(0, 10));
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const validate = () => {
+    if (!title || title.trim().length < 3) return "Title must be at least 3 characters.";
+    const parsed = Number(amount);
+    if (Number.isNaN(parsed) || parsed <= 0) return "Amount must be a number greater than 0.";
+    if (!date || Number.isNaN(new Date(date).getTime())) return "Date is invalid.";
+    return null;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    const v = validate();
+    if (v) return setError(v);
+
+    setLoading(true);
+    try {
+      await axios.post(`${API_URL}/expenses`, {
+        title: title.trim(),
+        amount: Number(amount),
+        category,
+        date,
+      });
+      setTitle("");
+      setAmount("");
+      setCategory("Food");
+      setDate(new Date().toISOString().slice(0, 10));
+      onSuccess?.();
+    } catch (err) {
+      console.error(err);
+      setError("Failed to save expense. Check server connection.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form id="add-expense" onSubmit={handleSubmit} className="w-full max-w-2xl bg-[#0f0f0f] border border-gray-800 rounded-lg p-4">
+      {error && <div className="mb-3 text-sm text-red-400">{error}</div>}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs text-gray-400 mb-1">Title</label>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="w-full bg-[#171717] border border-gray-800 text-gray-100 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-white"
+            placeholder="e.g., Lunch at Subway"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs text-gray-400 mb-1">Amount</label>
+          <input
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            type="number"
+            step="0.01"
+            min="0"
+            className="w-full bg-[#171717] border border-gray-800 text-gray-100 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-white"
+            placeholder="0.00"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs text-gray-400 mb-1">Category</label>
+          <select
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="w-full bg-[#171717] border border-gray-800 text-gray-100 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-white"
+          >
+            <option>Food</option>
+            <option>Transport</option>
+            <option>Shopping</option>
+            <option>Others</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-xs text-gray-400 mb-1">Date</label>
+          <input
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+            type="date"
+            className="w-full bg-[#171717] border border-gray-800 text-gray-100 rounded px-3 py-2 focus:outline-none focus:ring-1 focus:ring-white"
+          />
+        </div>
+      </div>
+
+      <div className="mt-4 flex items-center gap-3">
+        <button
+          type="submit"
+          disabled={loading}
+          className="bg-white text-black font-semibold px-4 py-2 rounded-md hover:bg-gray-200 disabled:opacity-60"
+        >
+          {loading ? "Saving..." : "Save Expense"}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onCancel?.()}
+          className="bg-transparent border border-gray-700 text-gray-300 px-3 py-2 rounded-md hover:bg-gray-800"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
