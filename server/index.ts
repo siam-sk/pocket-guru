@@ -14,7 +14,7 @@ const port = process.env.PORT || 5000;
 // Production-ready CORS setup
 const allowedOrigins = [
   'http://localhost:5173', 
-  'https://pocket-guru-server.vercel.app/'
+  'https://pocket-guru-rho.vercel.app'
 ];
 
 app.use(cors({
