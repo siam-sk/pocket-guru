@@ -69,10 +69,28 @@ app.post("/expenses", async (req: Request, res: Response) => {
 // GET /expenses → Fetch all expenses
 app.get("/expenses", async (req: Request, res: Response) => {
   try {
+    const { category, startDate, endDate } = req.query;
+    const query: Record<string, any> = {};
+
+    if (category && typeof category === "string" && category !== "All") {
+      query.category = category;
+    }
+
+    if (startDate && typeof startDate === "string") {
+      query.date = { ...query.date, $gte: new Date(startDate) };
+    }
+
+    if (endDate && typeof endDate === "string") {
+      
+      const endOfDay = new Date(endDate);
+      endOfDay.setDate(endOfDay.getDate() + 1);
+      query.date = { ...query.date, $lt: endOfDay };
+    }
+
     const db = getDb();
     const expenses = await db
       .collection("expenses")
-      .find()
+      .find(query)
       .sort({ date: -1, createdAt: -1 })
       .toArray();
     return res.status(200).json(expenses);
